@@ -97,7 +97,7 @@ int main(int argc, char *argv){
     return 0;
 }
 
-void do_client_request(buf, socketfd){
+void do_client_request(buf, sockfd){
     int ret;
     char user_list[MAX_DATA];
     message msg;
@@ -107,13 +107,16 @@ void do_client_request(buf, socketfd){
 
     switch(buf.type){
         case LOGIN:
-            if((ret = find_user(buf.source, buf.data)) < 0){
+            if((ret = user_login(buf.source, buf.data)) < 0){
                 msg.type = LO_NAK;
                 if(ret == PASSWD_FAILED){
                     strcpy(msg.data, "Username doesn't match password\n");
                 }
                 else if(ret == USER_FAILED){
                     strcpy(msg.data, "No this user in the database\n");
+                }
+                else if(ret == USER_ALREADY_CONN){
+                    strcpy(msg.data, "User already connected\n");
                 }
                 else{
                     strcpy(msg.data, "Unknown Failure, something wrong with the application\n");
@@ -125,13 +128,19 @@ void do_client_request(buf, socketfd){
             break;
         
         case EXIT:
-            user_logout(buf.source);
+            leave_session(sockfd);
+            user_logout(sockfd);
             break;
 
         case JOIN:
-            if(user_join_session(buf.source, buf.data) < 0){
+            if((ret = user_join_session(sockfd, buf.data) < 0){
                 msg.type = JN_NAK;
-                sprintf(msg.data, "Join session %s Failed\n", buf.data);
+                if(ret == SESSION_INVALID){
+                    sprintf(msg.data, "No session %s exists", buf.data);
+                }
+                else if(ret == SESSION_FULL){
+                    sprintf(msg.data, "The session %s is full", buf.data);
+                }
             }
             else{
                 msg.type = JN_ACK;
@@ -140,17 +149,17 @@ void do_client_request(buf, socketfd){
             break;
         
         case LEAVE_SESS:
-            leave_session(buf.source);
+            leave_session(sockfd);
             break;
         
         case NEW_SESS:
-            ret = create_session(buf.source)
+            ret = create_session(sockfd)
             msg.type = NS_ACK;
             sprintf(msg.data, "%d", ret);
             break;
         
         case MESSAGE:
-            ret = check_session(buf.source)
+            ret = find_session(buf.source)
             send_message(ret, buf.data);
             break;
 
@@ -167,7 +176,7 @@ void do_client_request(buf, socketfd){
     }
 
     if(msg.type != 0){  // we have to send back something
-        if(send(socketfd, &msg, sizeof(msg), 0) == -1){
+        if(send(sockfd, &msg, sizeof(msg), 0) == -1){
 			perror("send socket %d error", socketfd);
             exit(1);
 		}

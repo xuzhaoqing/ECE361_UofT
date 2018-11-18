@@ -16,9 +16,12 @@
 #define MAX_DATA 1024
 #define STDIN 0
 
-#define USER_FAILED   -1
-#define PASSWD_FAILED -2
+#define USER_FAILED       -1
+#define PASSWD_FAILED 	  -2
+#define USER_ALREADY_CONN -3
 
+#define SESSION_FULL -4
+#define SESSION_INVALID -5
 
 #define LOGIN 		10
 #define LO_ACK 		11
@@ -40,6 +43,11 @@
 
 #define UNKNOWN     60
 
+
+#define MAX_USER 50
+#define MAX_SESSION 10
+
+
 typedef struct message
 {
 	unsigned int type;
@@ -47,3 +55,4 @@ typedef struct message
 	unsigned char source[MAX_INFO];
 	unsigned char data[MAX_DATA];
 }message;
+
