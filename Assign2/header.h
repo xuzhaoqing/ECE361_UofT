@@ -1,3 +1,5 @@
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,4 +57,5 @@ typedef struct message
 	unsigned char source[MAX_INFO];
 	unsigned char data[MAX_DATA];
 }message;
+
 

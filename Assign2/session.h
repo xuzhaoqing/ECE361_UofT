@@ -72,6 +72,32 @@ void leave_session(int sockfd){
     printf("You are not at any session!\n");
 }
 
+int send_message(int sockfd, char* msg_text){
+    user *my_user = find_user(sockfd);
+    int curr_sockfd = -1;
+    for(int i = 0; i < MAX_SESSION; i++){
+        if(session_list[i] != NULL){
+            if(strcmp(session_list[i]->session_id, my_user->session_id)){
+                for(int j = 0; j < MAX_USER; j++){
+                    curr_sockfd = session_list[i]->user_sockfd[j];
+                    if( curr_sockfd != -1 && curr_sockfd != sockfd){ // if the user exists
+                            if(send(curr_sockfd, msg_text, sizeof(msg_text), 0) == -1){
+                                perror("send error in send_message()");
+                            }   
+                    }
+                }
+            }
+        }
+    }
+}
 
-void send_message
-
+void print_users_and_sessions(char* user_list){
+    user *temp = curr_user_list;
+    int cnt = 0;
+    sprintf(user_list, "User\tSession\n");
+    cnt = sizeof(user_list);
+    while(temp != NULL){
+        sprintf(user_list + cnt, "%s\t%s\n", temp->name,temp->session_id);
+        cnt = sizeof(user_list);
+    }
+}
