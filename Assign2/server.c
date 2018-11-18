@@ -19,10 +19,11 @@
 
 #define USER_FAILED       -1
 #define PASSWD_FAILED 	  -2
-#define USER_ALREADY_CONN -3
+#define USER_USED -3
 
 #define SESSION_FULL -4
 #define SESSION_INVALID -5
+#define SESSION_USED -6
 
 #define LOGIN 		10
 #define LO_ACK 		11
@@ -36,6 +37,7 @@
 #define LEAVE_SESS	33
 #define NEW_SESS	34
 #define NS_ACK		35
+#define NS_NAK      36
 
 #define MESSAGE 	40
 
@@ -46,7 +48,7 @@
 
 
 #define MAX_USER 50
-#define MAX_SESSION 10
+#define MAX_SESSION 20
 
 
 typedef struct message
@@ -108,7 +110,7 @@ int add_user_to_list(char *user_name, char *user_passwd, int sockfd){
     user *temp = curr_user_list;
     while(temp != NULL){
         if(temp->name == user_name){
-            return USER_ALREADY_CONN;
+            return USER_USED;
         }
         else{
             temp = temp->next;
@@ -194,8 +196,21 @@ typedef struct session{
 session *session_list[MAX_SESSION];
 
 int create_session(int sockfd, char* session_id){
-    for(int i = 0; i < MAX_SESSION; i++){
+    int find_potential_session = 0;
+    int i = 0;
+    for(i = 0; i < MAX_SESSION; i++){
         if(session_list[i] == NULL){ // find a valid session 
+            find_potential_session = i + 1;
+        }
+        else{
+            if(!strcmp(session_list[i]->session_id, session_id)){
+                return SESSION_USED;
+            }
+        }
+    }
+
+    if(find_potential_session){
+            i = find_potential_session - 1;
             session_list[i] = (session*)malloc(sizeof(session));
             strcpy(session_list[i]->session_id, session_id);
             memset(session_list[i]->user_sockfd, -1, sizeof(int)* MAX_USER);
@@ -205,10 +220,12 @@ int create_session(int sockfd, char* session_id){
             session_list[i]->user_num++ ;
             printf("Session %s has been created by %s\n", session_id, my_user->name);
             return 1;
-        }
     }
-    printf("Session is full, can't create new session\n");
-    return 0;
+    else{
+        printf("Session is full, can't create new session\n");
+        return SESSION_FULL;
+    }
+    
 }
 
 
@@ -311,7 +328,7 @@ void do_client_request(message buf, int sockfd, fd_set* master){
                 else if(ret == USER_FAILED){
                     strcpy(msg.data, "No this user in the database\n");
                 }
-                else if(ret == USER_ALREADY_CONN){
+                else if(ret == USER_USED){
                     strcpy(msg.data, "User already connected\n");
                 }
                 else{
@@ -355,6 +372,13 @@ void do_client_request(message buf, int sockfd, fd_set* master){
             if(ret == 1){
                 msg.type = NS_ACK;
                 strcpy(msg.data, buf.data);
+            }
+            else{
+                msg.type = NS_NAK;
+                if(ret == SESSION_USED)
+                    sprintf(msg.data,"The session already exists\n");
+                else if(ret == SESSION_FULL)
+                    sprintf(msg.data, "Session is already full\n");
             }
             break;
         
