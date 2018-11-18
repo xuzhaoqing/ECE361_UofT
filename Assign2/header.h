@@ -16,6 +16,10 @@
 #define MAX_DATA 1024
 #define STDIN 0
 
+#define USER_FAILED   -1
+#define PASSWD_FAILED -2
+
+
 #define LOGIN 		10
 #define LO_ACK 		11
 #define LO_NAK 		12
@@ -33,6 +37,8 @@
 
 #define QUERY		50
 #define Q_ACK		51
+
+#define UNKNOWN     60
 
 typedef struct message
 {
