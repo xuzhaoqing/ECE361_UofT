@@ -130,6 +130,8 @@ void do_client_request(buf, sockfd){
         case EXIT:
             leave_session(sockfd);
             user_logout(sockfd);
+            FD_CLR(sockfd, &master);
+            close(sockfd);
             break;
 
         case JOIN:

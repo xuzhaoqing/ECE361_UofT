@@ -116,8 +116,3 @@ user* find_user(int sockfd){
 }
 
 
-int user_join_session(int sockfd, char* session_id){
-    user *my_user = find_user(sockfd);
-    return session_add_user(my_user,session_id);
-}
-
