@@ -109,7 +109,7 @@ user *curr_user_list = NULL;
 int add_user_to_list(char *user_name, char *user_passwd, int sockfd){
     user *temp = curr_user_list;
     while(temp != NULL){
-        if(temp->name == user_name){
+        if(!strcmp(temp->name,user_name)){
             return USER_USED;
         }
         else{
@@ -118,8 +118,12 @@ int add_user_to_list(char *user_name, char *user_passwd, int sockfd){
     }
 
     temp = (user*)malloc(sizeof(user));
+    memset(temp->name,'\0', sizeof(temp->name));
+    memset(temp->passwd,'\0', sizeof(temp->passwd));
+   // printf("temp1 name has size: %d\n", strlen(temp->name));
     strcpy(temp->name, user_name);
     strcpy(temp->passwd, user_passwd);
+   // printf("temp2 name has size: %d\n", strlen(temp->name));
     temp->sockfd = sockfd;
     temp->next = curr_user_list;
     curr_user_list = temp;
@@ -181,6 +185,7 @@ user* find_user(int sockfd){
         if(my_user->sockfd == sockfd){
             return my_user;
         }
+        my_user = my_user->next;
     }
 
     // we shouldn't get here
@@ -199,20 +204,20 @@ int create_session(int sockfd, char* session_id){
     int find_potential_session = 0;
     int i = 0;
     for(i = 0; i < MAX_SESSION; i++){
-        if(session_list[i] == NULL){ // find a valid session 
+        if(session_list[i] == NULL){ // find a valid session, but we have to ensure it's a unique session name
             find_potential_session = i + 1;
         }
-        else{
-            if(!strcmp(session_list[i]->session_id, session_id)){
-                return SESSION_USED;
+        else{ // check if it's a unique name
+            if(!strcmp(session_list[i]->session_id, session_id)){ // if session name has been used
+                return SESSION_USED; 
             }
         }
     }
 
     if(find_potential_session){
-            i = find_potential_session - 1;
+            i = find_potential_session - 1;  
             session_list[i] = (session*)malloc(sizeof(session));
-            strcpy(session_list[i]->session_id, session_id);
+            strcpy(session_list[i]->session_id, session_id);  // put session_id into 
             memset(session_list[i]->user_sockfd, -1, sizeof(int)* MAX_USER);
             session_list[i]->user_sockfd[0] = sockfd;
             user *my_user = find_user(sockfd);
@@ -230,12 +235,17 @@ int create_session(int sockfd, char* session_id){
 
 
 int user_join_session(int sockfd, char *session_id){
+    user *my_user;
     for(int j = 0; j < MAX_SESSION; j++){
         if(session_list[j] != NULL){
             if(!strcmp(session_list[j]->session_id,session_id)){
                 for(int i = 0; i < MAX_USER; i++){
                     if(session_list[j]->user_sockfd[i] < 0){
                         session_list[j]->user_sockfd[i] = sockfd;
+                        my_user = find_user(sockfd);
+                        strcpy(my_user->session_id, session_id);
+                        session_list[j]->user_num++;
+                        printf("User %s has joined session %s\n",my_user->name, session_id);
                         return 1;
                     }
                 }
@@ -259,12 +269,12 @@ void leave_session(int sockfd, int being_exited){
                         session_list[i]->user_num--;
                         session_list[i]->user_sockfd[j] = -1;
                         memset(my_user->session_id,0,sizeof(char)* MAX_INFO);
-                    
+                        printf("%s has left the session %s\n", my_user->name, my_user->session_id);
                         if(session_list[i]->user_num == 0){
+                            printf("Session %s closed\n", session_list[i]->session_id);
                             free(session_list[i]);
                             session_list[i] = NULL;
                         }
-                        printf("%s has left the session %s\n", my_user->name, my_user->session_id);
                         return;
                     }
                 }
@@ -276,7 +286,7 @@ void leave_session(int sockfd, int being_exited){
     }
 }
 
-int send_message(int sockfd, char* msg_text){
+int send_message(int sockfd, message msg){
     user *my_user = find_user(sockfd);
     int curr_sockfd = -1;
     for(int i = 0; i < MAX_SESSION; i++){
@@ -285,10 +295,12 @@ int send_message(int sockfd, char* msg_text){
                 for(int j = 0; j < MAX_USER; j++){
                     curr_sockfd = session_list[i]->user_sockfd[j];
                     if( curr_sockfd != -1 && curr_sockfd != sockfd){ // if the user exists
-                            if(send(curr_sockfd, msg_text, sizeof(msg_text), 0) == -1){
+                            //printf("Message data is %s\n",msg.data);
+                            if(send(curr_sockfd, &msg, sizeof(msg), 0) == -1){
                                 perror("send error in send_message()\n");
                             }
-                               
+                            //printf("message has been sent to %d\n", curr_sockfd);
+                           // printf("message has been sent to %s\n", (find_user(curr_sockfd))->name);  
                     }
                 }
                 printf("user %s has sent a message to %s\n",my_user->name, my_user->session_id); 
@@ -301,12 +313,27 @@ int send_message(int sockfd, char* msg_text){
 void print_users_and_sessions(char* user_list){
     user *temp = curr_user_list;
     int cnt = 0;
-    sprintf(user_list, "User\tSession\n");
-    cnt = sizeof(user_list);
+    sprintf(user_list, "User\t\t\tSession\n");
+    cnt = strlen(user_list);
     while(temp != NULL){
-        sprintf(user_list + cnt, "%s\t%s\n", temp->name,temp->session_id);
-        cnt = sizeof(user_list);
+        //sprintf(user_list + cnt, "%s\t\t%s\n", temp->name, temp->session_id);
+        //printf("strlen %d", cnt);
+        //cnt = cnt + strlen(user_list);
+        
+        memcpy(user_list + cnt,temp->name,strlen(temp->name));
+      //  printf("%s has size %d\n",temp->name,strlen(temp->name));
+        cnt = strlen(user_list);
+        memcpy(user_list + cnt,"\t\t", strlen("\t\t"));
+        cnt = strlen(user_list);
+        memcpy(user_list + cnt,temp->session_id,strlen(temp->session_id));
+        cnt = strlen(user_list);
+        memcpy(user_list + cnt,"\n", strlen("\n"));
+       // printf("do you have size: %d\n",strlen("\n"));
+        cnt = strlen(user_list);
+        temp = temp->next;
     }
+
+
 }
 
 void do_client_request(message buf, int sockfd, fd_set* master){
@@ -316,7 +343,7 @@ void do_client_request(message buf, int sockfd, fd_set* master){
     msg.type = 0;
     strcpy(msg.source,"server");     
     memset(&msg.data,0, sizeof(msg.data));
-    memset(&user_list, 0, sizeof(char) * MAX_DATA);
+    memset(user_list, 0, sizeof(char) * MAX_DATA);
 
     switch(buf.type){
         case LOGIN:
@@ -334,6 +361,7 @@ void do_client_request(message buf, int sockfd, fd_set* master){
                 else{
                     strcpy(msg.data, "Unknown Failure, something wrong with the application\n");
                 }
+               
             }
             else{
                 msg.type = LO_ACK;
@@ -351,10 +379,10 @@ void do_client_request(message buf, int sockfd, fd_set* master){
             if((ret = user_join_session(sockfd, buf.data)) < 0){
                 msg.type = JN_NAK;
                 if(ret == SESSION_INVALID){
-                    sprintf(msg.data, "No session %s exists", buf.data);
+                    sprintf(msg.data, "No session %s exists\n", buf.data);
                 }
                 else if(ret == SESSION_FULL){
-                    sprintf(msg.data, "The session %s is full", buf.data);
+                    sprintf(msg.data, "The session %s is full\n", buf.data);
                 }
             }
             else{
@@ -383,13 +411,16 @@ void do_client_request(message buf, int sockfd, fd_set* master){
             break;
         
         case MESSAGE:
-            send_message(sockfd, buf.data);
+            send_message(sockfd, buf);
             break;
 
         case QUERY:
             msg.type = Q_ACK;
+           // printf("Start printing information:\n");
             print_users_and_sessions(user_list);
             strcpy(msg.data, user_list); 
+         //   printf("msg_data: %s\n",msg.data);
+         //   printf("user_list: %s\n",user_list);
             break;   
 
         default:
@@ -400,9 +431,14 @@ void do_client_request(message buf, int sockfd, fd_set* master){
 
     if(msg.type != 0){  // we have to send back something
         if(send(sockfd, &msg, sizeof(msg), 0) == -1){
-			printf("send socket %d error", sockfd);
+			printf("send socket %d error\n", sockfd);
             exit(1);
 		}
+
+        if(msg.type == LO_NAK){
+            FD_CLR(sockfd, master);
+            close(sockfd);
+        }
     }
 
 }
@@ -488,7 +524,7 @@ int main(int argc, char *argv[]){
                 if(i == sockfd){ // if it's from the main sockfd
                     new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &addr_size); // we accept a new sockfd
                     if(new_fd == -1){
-                        perror("accept");
+                        perror("accept\n");
                     }
                     else{
                         FD_SET(new_fd, &master); // we add the new_fd into the set;
@@ -499,7 +535,6 @@ int main(int argc, char *argv[]){
                                 inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr*)&their_addr),
                                 remoteIP,INET6_ADDRSTRLEN),
                                 new_fd);
-
                     }
                 }
                 else{
