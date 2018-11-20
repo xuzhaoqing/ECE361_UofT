@@ -44,19 +44,6 @@ typedef struct message
 	unsigned char data[MAX_DATA];
 }message;
 
-/*int Input_check(char *input) {//检测是否存在非法字符
-	int flag = 0, i;
-	for (i = 0; i < strlen(input); i++) {
-		if (!((input[i] >= '0' && input[i] <= '9') || (input[i] >='a' && input[i] <= 'z') ||\
-			input[i]=='_' || (input[i] >= 'A' && input[i] <= 'Z') || input[i]=='/' || input[i]==' ' || input[i] == '\n')) 
-		{
-			flag = 1;
-			break;
-		}
-	}
-	return flag;
-}*/
-
 int main(int argc, char *argv[])
 {
 	
@@ -99,10 +86,8 @@ int main(int argc, char *argv[])
 		{
 			memset(input_command, 0, sizeof(input_command));
 
-			if (fgets(input_buf,sizeof(input_buf),stdin)){
-				//input_buf[strcspn(input_buf, "\n")] = '\0';
-			}
-			else{
+			if (!fgets(input_buf,sizeof(input_buf),stdin)){ // We check if the input is accepted.
+
 				perror("Failed to input");
 				continue;
 			}
@@ -136,7 +121,7 @@ int main(int argc, char *argv[])
 				while(input_buf[i] != ' ' && input_buf[i] != '\n' && input_buf[i] != '\t' && input_buf[i] != '\0')
 				{
 					username_client[j] = input_buf[i];
-					i++;               // This is for Protocol for file name won't consist of this
+					i++;               // This is used for storing username
 					j++;
 				}
 				username_client[j] = '\0';
@@ -147,7 +132,7 @@ int main(int argc, char *argv[])
 				while(input_buf[i] != ' ' && input_buf[i] != '\n' && input_buf[i] != '\t' && input_buf[i] != '\0')
 				{
 					password_client[j] = input_buf[i];
-					i++;               
+					i++;               // This is used for storing password
 					j++;
 				}
 				password_client[j] = '\0';
@@ -158,7 +143,7 @@ int main(int argc, char *argv[])
 				while(input_buf[i] != ' ' && input_buf[i] != '\n' && input_buf[i] != '\t' && input_buf[i] != '\0')
 				{
 					IP_server[j] = input_buf[i];
-					i++;               
+					i++;               // This is used for storing Server IP.
 					j++;
 				}
 				IP_server[j] = '\0';
@@ -169,7 +154,7 @@ int main(int argc, char *argv[])
 				while(input_buf[i] != ' ' && input_buf[i] != '\n' && input_buf[i] != '\t' && input_buf[i] != '\0')
 				{
 					portnum_server[j] = input_buf[i];
-					i++;               
+					i++;               // This is used for storing port number
 					j++;
 				}
 				portnum_server[j] = '\0';
@@ -183,7 +168,7 @@ int main(int argc, char *argv[])
 
 				memset(&hints, 0, sizeof(hints));
 				hints.ai_family = AF_UNSPEC;
-				hints.ai_socktype = SOCK_STREAM;
+				hints.ai_socktype = SOCK_STREAM;    // TCP
 
 				if ((rv = getaddrinfo(IP_server, portnum_server, &hints, &serverinfo)) != 0) 
 				{
@@ -239,7 +224,7 @@ int main(int argc, char *argv[])
 
 			else if(!strcmp(input_command, "/logout"))
 			{
-				if(!connected)
+				if(!connected)                 // if not connected
 				{
 					fprintf(stderr, "You have not logged in, please log in first before logging out or quit the application.\n");
 					continue;
@@ -274,7 +259,7 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "You have not logged in, please log in first before joining session or quit the application.\n");
 					continue;
 				}
-				if(!in_session)
+				if(!in_session)                        // if not in session, we can join one.
 				{
 					memset(session, 0, sizeof(session));
 					while(input_buf[i] != ' ' && input_buf[i] != '\n' && input_buf[i] != '\t' && input_buf[i] != '\0')
